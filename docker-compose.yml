@@ -1,0 +1,73 @@
+version: '3'
+
+services:
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    hostname: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - ecommerce-golang
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+    networks:
+      - ecommerce-golang
+
+  products-backend:
+    container_name: products-backend
+    build:
+      context: ./products-backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./products-backend/:/app
+    restart: always
+    depends_on:
+      - postgres-db-golang
+      - rabbitmq
+    networks:
+      - ecommerce-golang
+
+  orders-backend:
+    container_name: orders-backend
+    build:
+      context: ./orders-backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./orders-backend/:/app
+    restart: always
+    depends_on:
+      - products-backend
+      - postgres-db-golang
+      - rabbitmq
+    networks:
+      - ecommerce-golang
+
+  postgres-db-golang:
+    container_name: postgres-db-golang
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: docker-postgres
+      POSTGRES_USER: postgres
+    volumes:
+      - ./postgres/:/var/lib/postgresql/data
+      - ./setup.sql:/docker-entrypoint-initdb.d/setup.sql
+    ports:
+      - "5432:5432"
+    restart: always
+    networks:
+      - ecommerce-golang
+
+networks:
+  ecommerce-golang:
+    external: true
